@@ -1,0 +1,74 @@
+namespaces:
+  ex: 'http://example.org/example/resource/'
+  pmdco: 'https://w3id.org/pmd/co/'
+  tto: 'https://w3id.org/pmd/tto/'
+  qudt: 'http://qudt.org/vocab/unit/'
+  xsd: 'http://www.w3.org/2001/XMLSchema#'
+
+unit_namespace: 'qudt'
+unit_predicate: 'pmdco:unit'
+value_predicate: 'pmdco:value'
+
+nodes:
+  sample_length:
+    json_field: 'Sample Length'
+    subject_template: 'ex:originalGaugeLength_{elabid}'
+    types:
+      - 'tto:OriginalGaugeLength'
+      - 'pmdco:PrimaryData'
+
+  sample_diameter:
+    json_field: 'Sample Diameter'
+    subject_template: 'ex:originalDiameter_{elabid}'
+    types:
+      - 'tto:OriginalDiameter'
+      - 'pmdco:PrimaryData'
+
+  crosshead_separation_rate:
+    json_field: 'Crosshead Separation Rate'
+    subject_template: 'ex:crossheadSeparationRate_{elabid}'
+    types:
+      - 'tto:CrossheadSeparationRate'
+      - 'pmdco:PrimaryData'
+
+  environmental_temperature:
+    json_field: 'Environmental Temperature'
+    subject_template: 'ex:environmentalTemperature_{elabid}'
+    types:
+      - 'pmdco:EnvironmentalTemperature'
+      - 'pmdco:Metadata'
+
+  operator:
+    json_field: 'group'
+    subject_template: 'ex:operator_{elabid}'
+    types:
+      - 'pmdco:Operator'
+      - 'pmdco:Metadata'
+
+  tensile_test_process:
+    json_field: 'Tensile Test Process'
+    subject_template: 'ex:tensileTestProcess_{elabid}'
+    types:
+      - 'tto:TensileTest'
+
+  tensile_test_piece:
+    json_field: 'Tensile Test Piece'
+    subject_template: 'ex:tensileTestPiece_{elabid}'
+    types:
+      - 'pmdco:TestPiece'
+
+edges:
+  pmdco:characteristic:
+    'tensile_test_process':
+      - 'sample_length'
+      - 'sample_diameter'
+      - 'crosshead_separation_rate'
+      - 'environmental_temperature'
+      - 'operator'
+    'tensile_test_piece':
+      - 'sample_length'
+      - 'sample_diameter'
+
+  pmdco:input:
+    'tensile_test_process':
+      - 'tensile_test_piece'
