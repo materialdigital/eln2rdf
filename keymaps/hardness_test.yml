@@ -1,0 +1,38 @@
+namespaces:
+  ex: 'http://example.org/example/resource/'
+  pmdco: 'https://w3id.org/pmd/co/'
+  tto: 'https://w3id.org/pmd/tto/'
+  qudt: 'http://qudt.org/vocab/unit/'
+  xsd: 'http://www.w3.org/2001/XMLSchema#'
+
+unit_namespace: 'qudt'
+unit_predicate: 'pmdco:unit'
+value_predicate: 'pmdco:value'
+
+nodes:
+  hardness_test_process:
+    json_field: 'Hardness Test Process'
+    subject_template: 'ex:hardnessTestProcess_{elabid}'
+    types:
+      - 'pmdco:HardnessTestProcess'
+
+  testing_load:
+    json_field: 'Testing Load'
+    subject_template: 'ex:testingLoad_{elabid}'
+    types:
+      - 'pmdco:TestingLoad'
+      - 'pmdco:PrimaryData'
+
+  hardness_test:
+    json_field: 'Hardness Test'
+    subject_template: 'ex:hardnessTest_{elabid}'
+    types:
+      - 'pmdco:HardnessTest'
+      - 'pmdco:PrimaryData'
+
+edges:
+  pmdco:characteristic:
+    'hardness_test_process':
+      - 'testing_load'
+      - 'hardness_test'
+

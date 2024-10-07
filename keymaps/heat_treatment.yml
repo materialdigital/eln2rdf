@@ -1,0 +1,38 @@
+namespaces:
+  ex: 'http://example.org/example/resource/'
+  pmdco: 'https://w3id.org/pmd/co/'
+  tto: 'https://w3id.org/pmd/tto/'
+  qudt: 'http://qudt.org/vocab/unit/'
+  xsd: 'http://www.w3.org/2001/XMLSchema#'
+
+unit_namespace: 'qudt'
+unit_predicate: 'pmdco:unit'
+value_predicate: 'pmdco:value'
+
+nodes:
+  heat_treatment_time:
+    json_field: 'Heat treatment time'
+    subject_template: 'ex:heatTreatmentTime_{elabid}'
+    types:
+      - 'pmdco:HeatTreatmentTime'
+      - 'pmdco:PrimaryData'
+
+  heat_treatment_temperature:
+    json_field: 'Heat treatment temperature'
+    subject_template: 'ex:heatTreatmentTemperature_{elabid}'
+    types:
+      - 'pmdco:HeatTreatmentTemperature'
+      - 'pmdco:PrimaryData'
+
+  heat_treatment_process:
+    json_field: 'Heat Treatment Process'
+    subject_template: 'ex:heatTreatmentProcess_{elabid}'
+    types:
+      - 'pmdco:HeatTreatmentProcess'
+
+edges:
+  pmdco:characteristic:
+    'heat_treatment_process':
+      - 'heat_treatment_time'
+      - 'heat_treatment_temperature'
+
