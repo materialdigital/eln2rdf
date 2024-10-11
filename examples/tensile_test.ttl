@@ -1,0 +1,42 @@
+@prefix ex: <http://example.org/example/resource/> .
+@prefix pmdco: <https://w3id.org/pmd/co/> .
+@prefix qudt: <http://qudt.org/vocab/unit/> .
+@prefix tto: <https://w3id.org/pmd/tto/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:tensileTestProcess_1 a tto:TensileTest ;
+    pmdco:characteristic ex:crossheadSeparationRate_1,
+        ex:environmentalTemperature_1,
+        ex:operator_1,
+        ex:originalDiameter_1,
+        ex:originalGaugeLength_1 ;
+    pmdco:input ex:tensileTestPiece_1 .
+
+ex:crossheadSeparationRate_1 a pmdco:PrimaryData,
+        tto:CrossheadSeparationRate ;
+    pmdco:unit qudt:MilliM-PER-SEC ;
+    pmdco:value "0.03"^^xsd:float .
+
+ex:environmentalTemperature_1 a pmdco:EnvironmentalTemperature,
+        pmdco:Metadata ;
+    pmdco:unit qudt:DEG_C ;
+    pmdco:value "23.0"^^xsd:float .
+
+ex:operator_1 a pmdco:Metadata,
+        pmdco:Operator ;
+    pmdco:value "Gruppe 4-1"^^xsd:string .
+
+ex:tensileTestPiece_1 a pmdco:TestPiece ;
+    pmdco:characteristic ex:originalDiameter_1,
+        ex:originalGaugeLength_1 .
+
+ex:originalDiameter_1 a pmdco:PrimaryData,
+        tto:OriginalDiameter ;
+    pmdco:unit qudt:MilliM ;
+    pmdco:value "5.0"^^xsd:float .
+
+ex:originalGaugeLength_1 a pmdco:PrimaryData,
+        tto:OriginalGaugeLength ;
+    pmdco:unit qudt:MilliM ;
+    pmdco:value "25.25"^^xsd:float .
+
