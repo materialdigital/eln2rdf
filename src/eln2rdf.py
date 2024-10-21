@@ -151,7 +151,15 @@ def resolve_string_to_uri(string, namespaces):
 
 
 class Node:
-    def __init__(self, elabid, subject_template, types, json_field, namespaces=None):
+    @staticmethod
+    def factory(node_type, **kwargs):
+        if node_type == 'UnitValue':
+            return UnitValueNode(**kwargs)
+        elif node_type == 'Basic':
+            return Node(**kwargs)
+        else:
+            raise ValueError(f"Unknown node type: {node_type}")
+    def __init__(self, elabid, subject_template, types, json_field, namespaces):
         self.elabid = elabid
         self.subject_template = subject_template
         self.types = types
@@ -162,32 +170,33 @@ class Node:
         subject_str = self.subject_template.format(elabid=sanitize_uri_component(self.elabid))
         return resolve_string_to_uri(subject_str, self.namespaces)
 
-    def add_to_graph(self, g, data):
+    def add_to_graph(self, g):
         subject = self.get_subject_uri()
         # add RDF types
         for rdf_type in self.types:
             g.add((subject, RDF.type, resolve_string_to_uri(rdf_type, self.namespaces)))
         return subject
 
+
 class UnitValueNode(Node):
-    def __init__(self, elabid, subject_template, types, json_field, unit_namespace='qudt', 
-                 unit_predicate=None, value_predicate=None, namespaces=None):
+    def __init__(self, elabid, subject_template, types, json_field, namespaces, unit_namespace, unit_predicate, value_predicate):
         super().__init__(elabid, subject_template, types, json_field, namespaces)
         self.unit_namespace = unit_namespace
-        self.unit_predicate = unit_predicate if unit_predicate else None
-        self.value_predicate = value_predicate if value_predicate else None
+        self.unit_predicate = unit_predicate
+        self.value_predicate = value_predicate
 
-    def add_to_graph(self, g, data):
-        subject = super().add_to_graph(g, data)
-        field_data = data.get(self.json_field, {})
+    def add_to_graph(self, g, fields):
+        subject = super().add_to_graph(g)
+        field_data = fields.get(self.json_field, {})
 
-        # add unit if available
+        # add unit 
         if 'unit' in field_data:
             unit_uri = self.namespaces[self.unit_namespace][sanitize_uri_component(field_data['unit'])]
-            if self.unit_predicate:
-                g.add((subject, self.unit_predicate, unit_uri))
+            g.add((subject, self.unit_predicate, unit_uri))
+        else:
+            logger.warning(f"Missing 'unit' for node '{self.json_field}'. Skipping unit addition.")
         
-        # add value if available
+        # add value 
         if 'value' in field_data:
             value = field_data['value']
             datatype = field_data.get('type', 'string')
@@ -199,42 +208,10 @@ class UnitValueNode(Node):
             except ValueError:
                 logger.warning(f"Could not convert value '{value}' to datatype {datatype}. Using string.")
                 literal = Literal(value, datatype=XSD.string)
-            if self.value_predicate:
                 g.add((subject, self.value_predicate, literal))
-        return subject
-
-
-def process_node(node_mappings, g, elabid, fields, namespaces=None):
-    nodes = {}
-    for node_key, node_mapping in node_mappings.items():
-        # determine if node requires unit and value
-        unit_predicate = node_mapping.get('unit_predicate')
-        if unit_predicate:
-            unit_predicate = resolve_string_to_uri(unit_predicate, namespaces)
-        
-        value_predicate = node_mapping.get('value_predicate')
-        if value_predicate:
-            value_predicate = resolve_string_to_uri(value_predicate, namespaces)
-        
-        if 'unit' in fields.get(node_mapping['json_field'], {}):
-            node = UnitValueNode(
-                elabid=elabid,
-                subject_template=node_mapping['subject_template'],
-                types=node_mapping['types'],
-                json_field=node_mapping['json_field'],
-                unit_predicate=unit_predicate,
-                value_predicate=value_predicate
-            )
         else:
-            node = Node(
-                elabid=elabid,
-                subject_template=node_mapping['subject_template'],
-                types=node_mapping['types'],
-                json_field=node_mapping['json_field']
-            )
-        subject = node.add_to_graph(g, fields)
-        nodes[node_key] = subject
-    return nodes
+            logger.warning(f"Missing 'value' for node '{self.json_field}'. Skipping value addition.")
+        return subject
 
 
 def process_edges(g, edges, nodes_dict, namespaces):
@@ -257,38 +234,38 @@ def process_data_with_mapping(g, data_item, data_mapping):
     nodes = dict()
     namespaces =  {p: Namespace(u) for p, u in g.namespaces()}
 
-    # Process each node
+    unit_namespace = data_mapping.get('unit_namespace', 'qudt')
+    unit_predicate = resolve_string_to_uri(data_mapping.get('unit_predicate', 'pmdco:unit'), namespaces)
+    value_predicate = resolve_string_to_uri(data_mapping.get('value_predicate', 'pmdco:value'), namespaces)
+
+    # process each node
     for node_name, node_mapping in data_mapping.get('nodes', {}).items():
-        # Determine if node requires unit and value
-        unit_predicate = None if node_mapping.get('unit_predicate') is None else resolve_string_to_uri(node_mapping.get('unit_predicate'), namespaces)
-        value_predicate = None if node_mapping.get('value_predicate') is None else resolve_string_to_uri(node_mapping.get('value_predicate'), namespaces)
-        if 'unit' in data_item.get('fields', {}).get(node_mapping['json_field'], {}) if data_item.get('fields') else {}:
-            node = UnitValueNode(
-                elabid=data_item['elabid'],
-                subject_template=node_mapping['subject_template'],
-                types=node_mapping['types'],
-                json_field=node_mapping['json_field'],
-                unit_predicate=unit_predicate,
-                value_predicate=value_predicate,
-                namespaces=namespaces
-            )
-        else:
-            node = Node(
-                elabid=data_item['elabid'],
-                subject_template=node_mapping['subject_template'],
-                types=node_mapping['types'],
-                json_field=node_mapping['json_field'],
-                namespaces=namespaces
-            )
-        if 'fields' in data_item:
-            subject = node.add_to_graph(g, data_item['fields'])
-        else:
+        # determine the node type from the mapping
+        node_type = node_mapping.get('node_type', 'Basic')
+
+        # initialize the node using the factory
+        node = Node.factory(
+            node_type=node_type,
+            elabid=data_item['elabid'],
+            subject_template=node_mapping['subject_template'],
+            types=node_mapping['types'],
+            json_field=node_mapping['json_field'],
+            namespaces=namespaces,
+            unit_namespace=unit_namespace,
+            unit_predicate=unit_predicate,
+            value_predicate=value_predicate
+        )
+
+        fields = data_item.get('fields', {})
+        if not fields:
             logger.error(f"No 'fields' found in data item for node '{node_name}'. Skipping node.")
             continue
+        subject = node.add_to_graph(g, fields)
         nodes[node_name] = subject
 
     # Process edges
     process_edges(g, data_mapping.get('edges', {}) if data_mapping.get('edges') is not None else {}, nodes, namespaces)
+
 
 def plot_rdf_graph(rdf_graph, image_filename):
     # Create a NetworkX graph
