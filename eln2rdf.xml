@@ -1,0 +1,64 @@
+<WaNoTemplate>
+    <WaNoMeta>
+        <Author>
+            <Name> J. Kryeziu </Name>
+        </Author>
+        <Author>
+            <Name> J. Schaarschmidt</Name>
+        </Author>
+
+        <Description>
+            This is a SimStack WaNo for the Eln-to-rdf 
+converter.
+        </Description>
+
+        <Keyword>ElnToRdf</Keyword>
+    </WaNoMeta>
+
+    <WaNoRoot name="ElnToRdf">
+        <WaNoFile logical_filename="i_eln.zip"  name="ELN2 
+export"> ELN export </WaNoFile>
+        <WaNoFile logical_filename="config.yml"  name="Keymap 
+file"> Keymap file </WaNoFile> 
+
+    <WaNoBool name="Graph plot" description= "Optionally have 
+the plot of the graph as an output">False</WaNoBool>
+    <WaNoDictBox name="Plot info" visibility_condition="%s == 
+True" visibility_var_path="Graph plot">
+      <WaNoString name="Plot path">output.png</WaNoString>
+    </WaNoDictBox>
+
+    </WaNoRoot>
+
+	<WaNoInputFiles>
+		<WaNoInputFile 
+logical_filename="eln2rdf.py">src/eln2rdf.py</WaNoInputFile>
+	</WaNoInputFiles>
+   
+
+    <WaNoExecCommand>
+    NANOVER=V4
+    CONFIG_PATH=$NANOMATCH/$NANOVER/configs/eln.config
+    if [ -e  $CONFIG_PATH ]; then
+        echo "loading config from $CONFIG_PATH" 
+        source $CONFIG_PATH
+    else
+        echo "loading eln enviroment directly"
+        simstack_server_mamba_source
+        conda activate eln
+    fi
+    python eln2rdf.py i_eln.zip --keymap config.yml --output 
+output.ttl \
+    {% if wano["Graph plot"] %} --plot {{ wano["Plot 
+info"]["Plot path"] }} {% endif %}
+
+
+    </WaNoExecCommand>
+
+
+    <WaNoOutputFiles>
+        <WaNoOutputFile>output.ttl</WaNoOutputFile>
+    </WaNoOutputFiles>
+
+</WaNoTemplate>
+
