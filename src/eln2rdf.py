@@ -15,7 +15,6 @@ from rdflib import Graph, Literal, Namespace, RDF, URIRef
 from rdflib.namespace import XSD
 
 # Configure logging
-
 logger = logging.getLogger(__name__)
 
 
@@ -151,40 +150,68 @@ def resolve_string_to_uri(string, namespaces):
     return URIRef(string)
 
 
-def process_node(node_mapping, g, namespaces=None, elabid="",
-                 unit_namespace="qudt", unit_predicate=None, value_predicate=None, **kwargs):
+class Node:
+    @staticmethod
+    def factory(node_type, **kwargs):
+        if node_type == 'UnitValue':
+            return UnitValueNode(**kwargs)
+        elif node_type == 'Basic':
+            return Node(**kwargs)
+        else:
+            raise ValueError(f"Unknown node type: {node_type}")
+    def __init__(self, elabid, subject_template, types, json_field, namespaces):
+        self.elabid = elabid
+        self.subject_template = subject_template
+        self.types = types
+        self.json_field = json_field
+        self.namespaces = namespaces
 
-    fields = kwargs.get('fields', {})
-    subject_template = node_mapping['subject_template']
-    field_name =  node_mapping.get('json_field')
-    if field_name in kwargs:
-        field_data = {'value': kwargs[field_name]}
-    else:
-        field_data = fields.get(field_name, {})
+    def get_subject_uri(self):
+        subject_str = self.subject_template.format(elabid=sanitize_uri_component(self.elabid))
+        return resolve_string_to_uri(subject_str, self.namespaces)
 
-    subject_str = subject_template.format(elabid=sanitize_uri_component(elabid))
-    subject = resolve_string_to_uri(subject_str, namespaces)
-    # Add types
-    for rdf_type in node_mapping.get('types', []):
-        g.add((subject, RDF.type, resolve_string_to_uri(rdf_type, namespaces)))
+    def add_to_graph(self, g):
+        subject = self.get_subject_uri()
+        # add RDF types
+        for rdf_type in self.types:
+            g.add((subject, RDF.type, resolve_string_to_uri(rdf_type, self.namespaces)))
+        return subject
 
-    # Add unit and value predicates if they exist
-    if 'unit' in field_data:
-        unit_uri = namespaces[unit_namespace][sanitize_uri_component(field_data['unit'])]
-        g.add((subject, unit_predicate, unit_uri))
-    if 'value' in field_data:
-        value = field_data['value']
-        datatype = field_data.get('type', 'string')
-        try:
-            if datatype == 'number':
-                literal = Literal(float(value), datatype=XSD.float)
-            else:
+
+class UnitValueNode(Node):
+    def __init__(self, elabid, subject_template, types, json_field, namespaces, unit_namespace, unit_predicate, value_predicate):
+        super().__init__(elabid, subject_template, types, json_field, namespaces)
+        self.unit_namespace = unit_namespace
+        self.unit_predicate = unit_predicate
+        self.value_predicate = value_predicate
+
+    def add_to_graph(self, g, fields):
+        subject = super().add_to_graph(g)
+        field_data = fields.get(self.json_field, {})
+
+        # add unit 
+        if 'unit' in field_data:
+            unit_uri = self.namespaces[self.unit_namespace][sanitize_uri_component(field_data['unit'])]
+            g.add((subject, self.unit_predicate, unit_uri))
+        else:
+            logger.warning(f"Missing 'unit' for node '{self.json_field}'. Skipping unit addition.")
+        
+        # add value 
+        if 'value' in field_data:
+            value = field_data['value']
+            datatype = field_data.get('type', 'string')
+            try:
+                if datatype == 'number':
+                    literal = Literal(float(value), datatype=XSD.float)
+                else:
+                    literal = Literal(value, datatype=XSD.string)
+            except ValueError:
+                logger.warning(f"Could not convert value '{value}' to datatype {datatype}. Using string.")
                 literal = Literal(value, datatype=XSD.string)
-        except ValueError:
-            logger.warning(f"Could not convert value '{value}' to datatype {datatype}. Using string.")
-            literal = Literal(value, datatype=XSD.string)
-        g.add((subject, value_predicate, literal))
-    return subject
+                g.add((subject, self.value_predicate, literal))
+        else:
+            logger.warning(f"Missing 'value' for node '{self.json_field}'. Skipping value addition.")
+        return subject
 
 
 def process_edges(g, edges, nodes_dict, namespaces):
@@ -200,6 +227,44 @@ def process_edges(g, edges, nodes_dict, namespaces):
                 target_uri = nodes_dict.get(target_node)
                 # Add the edge to the graph
                 g.add((source_uri, resolve_string_to_uri(predicate, namespaces), target_uri))
+
+
+def process_data_with_mapping(g, data_item, data_mapping):
+
+    nodes = dict()
+    namespaces =  {p: Namespace(u) for p, u in g.namespaces()}
+
+    unit_namespace = data_mapping.get('unit_namespace', 'qudt')
+    unit_predicate = resolve_string_to_uri(data_mapping.get('unit_predicate', 'pmdco:unit'), namespaces)
+    value_predicate = resolve_string_to_uri(data_mapping.get('value_predicate', 'pmdco:value'), namespaces)
+
+    # process each node
+    for node_name, node_mapping in data_mapping.get('nodes', {}).items():
+        # determine the node type from the mapping
+        node_type = node_mapping.get('node_type', 'Basic')
+
+        # initialize the node using the factory
+        node = Node.factory(
+            node_type=node_type,
+            elabid=data_item['elabid'],
+            subject_template=node_mapping['subject_template'],
+            types=node_mapping['types'],
+            json_field=node_mapping['json_field'],
+            namespaces=namespaces,
+            unit_namespace=unit_namespace,
+            unit_predicate=unit_predicate,
+            value_predicate=value_predicate
+        )
+
+        fields = data_item.get('fields', {})
+        if not fields:
+            logger.error(f"No 'fields' found in data item for node '{node_name}'. Skipping node.")
+            continue
+        subject = node.add_to_graph(g, fields)
+        nodes[node_name] = subject
+
+    # Process edges
+    process_edges(g, data_mapping.get('edges', {}) if data_mapping.get('edges') is not None else {}, nodes, namespaces)
 
 
 def plot_rdf_graph(rdf_graph, image_filename):
@@ -226,25 +291,6 @@ def plot_rdf_graph(rdf_graph, image_filename):
 
     # Close the plot to avoid display
     plt.close()
-
-
-def process_data_with_mapping(g, data_item, data_mapping):
-
-    nodes = dict()
-    namespaces =  {p: Namespace(u) for p, u in g.namespaces()}
-    general_config = {
-        "unit_namespace": data_mapping.get('unit_namespace', 'qudt'),
-        "unit_predicate": resolve_string_to_uri(data_mapping.get('unit_predicate'), namespaces),
-        "value_predicate": resolve_string_to_uri(data_mapping.get('value_predicate'), namespaces)
-    }
-    # Process each node
-    for node_name, node_mapping in data_mapping['nodes'].items():
-        node_subj = process_node(node_mapping, g, namespaces=namespaces, **data_item, **general_config)
-        nodes[node_name] = node_subj
-
-    # Process edges
-    process_edges(g, data_mapping.get('edges', {}), nodes, namespaces)
-
 
 def main():
     parser = argparse.ArgumentParser(description='Convert ELN export to RDF Turtle format.')

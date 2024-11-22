@@ -11,6 +11,7 @@ value_predicate: 'pmdco:value'
 
 nodes:
   sample_length:
+    node_type: UnitValue
     json_field: 'Sample Length'
     subject_template: 'ex:originalGaugeLength_{elabid}'
     types:
@@ -18,6 +19,7 @@ nodes:
       - 'pmdco:PrimaryData'
 
   sample_diameter:
+    node_type: UnitValue
     json_field: 'Sample Diameter'
     subject_template: 'ex:originalDiameter_{elabid}'
     types:
@@ -25,6 +27,7 @@ nodes:
       - 'pmdco:PrimaryData'
 
   crosshead_separation_rate:
+    node_type: UnitValue
     json_field: 'Crosshead Separation Rate'
     subject_template: 'ex:crossheadSeparationRate_{elabid}'
     types:
@@ -32,6 +35,7 @@ nodes:
       - 'pmdco:PrimaryData'
 
   environmental_temperature:
+    node_type: UnitValue
     json_field: 'Environmental Temperature'
     subject_template: 'ex:environmentalTemperature_{elabid}'
     types:
@@ -39,6 +43,7 @@ nodes:
       - 'pmdco:Metadata'
 
   operator:
+    node_type: UnitValue
     json_field: 'group'
     subject_template: 'ex:operator_{elabid}'
     types:
@@ -46,12 +51,14 @@ nodes:
       - 'pmdco:Metadata'
 
   tensile_test_process:
+    node_type: UnitValue
     json_field: 'Tensile Test Process'
     subject_template: 'ex:tensileTestProcess_{elabid}'
     types:
       - 'tto:TensileTest'
 
   tensile_test_piece:
+    node_type: UnitValue
     json_field: 'Tensile Test Piece'
     subject_template: 'ex:tensileTestPiece_{elabid}'
     types:
