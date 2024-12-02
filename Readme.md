@@ -28,10 +28,11 @@ Bibtex:
    author = {Schilling, Markus and Bruns, Sebastian and Bayerlein, Bernd and Kryeziu, Jehona and Schaarschmidt, Jörg and Waitelonis, Jörg and Dolabella Portella, Pedro and Durst, Karsten},
    title = {Seamless Science: Lifting Experimental Mechanical Testing Lab Data to an Interoperable Semantic Representation},
    journal = {Advanced Engineering Materials},
-   pages = {TBD},
-   ISSN = {TBD},
+   pages = {2401527},
+   keywords = {electronic laboratory notebooks, mechanical testing, ontologies, semantic data integration, semantic web technologies},
    DOI = {10.1002/adem.202401527},
    url = {https://doi.org/10.1002/adem.202401527},
+   eprint = {https://onlinelibrary.wiley.com/doi/pdf/10.1002/adem.202401527},
    year = {2024},
    type = {Journal Article}
 }
